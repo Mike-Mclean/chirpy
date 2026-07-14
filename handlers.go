@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"fmt"
+	"strings"
 )
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -42,7 +43,7 @@ func handlerChirpsValidate(w http.ResponseWriter, r *http.Request) {
 		Content string `json:"body"`
 	}
 	type returnValid struct {
-		Valid bool `json:"valid"`
+		Cleaned_body string `json:"cleaned_body"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -58,7 +59,27 @@ func handlerChirpsValidate(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, 400, "Chirp is too long")
 		return
 	}
+
 	respondWithJSON(w, 200, returnValid{
-		Valid: true,
+		Cleaned_body: removeProfane(params.Content),
 	})
+}
+
+func removeProfane (msg string) string {
+	msgDetails := strings.Split(msg, " ")
+
+	profane := map[string]bool {
+		"kerfuffle": true,
+		"sharbert": true,
+		"fornax": true,
+	}
+
+	for i := 0; i < len(msgDetails); i++ {
+		word := strings.ToLower(msgDetails[i])
+		if profane[word] {
+			msgDetails[i] = "****"
+		}
+	}
+	cleanMsg := strings.Join(msgDetails, " ")
+	return cleanMsg
 }
