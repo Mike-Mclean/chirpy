@@ -83,3 +83,9 @@ func removeProfane (msg string) string {
 	cleanMsg := strings.Join(msgDetails, " ")
 	return cleanMsg
 }
+
+func handlerNewUser(w http.ResponseWriter, r *http.Request) {
+	type email struct {
+		Email string `json:"email"`
+	}
+}
