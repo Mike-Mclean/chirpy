@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 	"log"
+	"github.com/google/uuid"
+	"chirpy/internal/database"
 )
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -49,33 +51,6 @@ func handlerReadiness(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("OK\n"))
 }
 
-func handlerChirpsValidate(w http.ResponseWriter, r *http.Request) {
-	type chirp struct {
-		Content string `json:"body"`
-	}
-	type returnValid struct {
-		Cleaned_body string `json:"cleaned_body"`
-	}
-
-	decoder := json.NewDecoder(r.Body)
-	params := chirp{}
-	err := decoder.Decode(&params)
-	if err != nil{
-		respondWithError(w, 500, "Something went wrong")
-		return
-	}
-
-	const maxChirpLen = 140
-	if len(params.Content) > maxChirpLen {
-		respondWithError(w, 400, "Chirp is too long")
-		return
-	}
-
-	respondWithJSON(w, 200, returnValid{
-		Cleaned_body: removeProfane(params.Content),
-	})
-}
-
 func removeProfane (msg string) string {
 	msgDetails := strings.Split(msg, " ")
 
@@ -111,7 +86,7 @@ func (cfg *apiConfig) handlerNewUser(w http.ResponseWriter, r *http.Request) {
 	user, err := cfg.db.CreateUser(r.Context(), params.Email)
 	if err != nil {
 		log.Println("error creating user:", err)
-		respondWithError(w, http.StatusInternalServerError, "Failed to connect to database")
+		respondWithError(w, http.StatusInternalServerError, "Failed to create user")
 		return
 	}
 
@@ -123,4 +98,48 @@ func (cfg *apiConfig) handlerNewUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondWithJSON(w, http.StatusCreated, respBody)
+}
+
+func (cfg *apiConfig) handlerChirp(w http.ResponseWriter, r *http.Request) {
+	type chirpRequest struct {
+		Body string `json:"body"`
+		UserID uuid.NullUUID `json:"user_id"`
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	params := chirpRequest{}
+	err := decoder.Decode(&params)
+	if err != nil{
+		respondWithError(w, 500, "Something went wrong")
+		return
+	}
+
+	const maxChirpLen = 140
+	if len(params.Body) > maxChirpLen {
+		respondWithError(w, 400, "Chirp is too long")
+		return
+	}
+
+	newChirpParams := database.CreateChirpParams{
+		Body: removeProfane(params.Body),
+		UserID: params.UserID,
+	}
+
+	newChirp, err := cfg.db.CreateChirp(r.Context(), newChirpParams)
+	if err != nil {
+		log.Println("error creating chirp:", err)
+		respondWithError(w, http.StatusInternalServerError, "Failed to create chirp")
+		return
+	}
+
+	respBody := Chirp {
+		ID: 		newChirp.ID,
+		CreatedAt: 	newChirp.CreatedAt,
+		UpdatedAt: 	newChirp.UpdatedAt,
+		Body: 		newChirp.Body,
+		UserID: 	newChirp.UserID,
+	}
+
+	respondWithJSON(w, http.StatusCreated, respBody)
+
 }
