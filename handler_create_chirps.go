@@ -5,20 +5,33 @@ import (
 	"net/http"
 	"strings"
 	"log"
-	"github.com/google/uuid"
 	"chirpy/internal/database"
+	"chirpy/internal/auth"
 )
 
 
 func (cfg *apiConfig) handlerChirp(w http.ResponseWriter, r *http.Request) {
+	bearer_token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		log.Println("error getting bearer token:", err)
+		respondWithError(w, http.StatusUnauthorized, "Failed to authenticate")
+		return
+	}
+
+	userID, err := auth.ValidateJWT(bearer_token, cfg.secret)
+	if err != nil {
+		log.Println("error validating JWT:", err)
+		respondWithError(w, http.StatusUnauthorized, "Failed to authenticate")
+		return
+	}
+
 	type chirpRequest struct {
-		Body string `json:"body"`
-		UserID uuid.NullUUID `json:"user_id"`
+		Body 	string 			`json:"body"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
 	params := chirpRequest{}
-	err := decoder.Decode(&params)
+	err = decoder.Decode(&params)
 	if err != nil{
 		respondWithError(w, 500, "Something went wrong")
 		return
@@ -32,7 +45,7 @@ func (cfg *apiConfig) handlerChirp(w http.ResponseWriter, r *http.Request) {
 
 	newChirpParams := database.CreateChirpParams{
 		Body: removeProfane(params.Body),
-		UserID: params.UserID,
+		UserID: userID,
 	}
 
 	newChirp, err := cfg.db.CreateChirp(r.Context(), newChirpParams)
@@ -47,7 +60,7 @@ func (cfg *apiConfig) handlerChirp(w http.ResponseWriter, r *http.Request) {
 		CreatedAt: 	newChirp.CreatedAt,
 		UpdatedAt: 	newChirp.UpdatedAt,
 		Body: 		newChirp.Body,
-		UserID: 	newChirp.UserID,
+		UserID: 	userID,
 	}
 
 	respondWithJSON(w, http.StatusCreated, respBody)

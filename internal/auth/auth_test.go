@@ -4,6 +4,7 @@ import (
 	"testing"
 	"github.com/google/uuid"
 	"time"
+	"net/http"
 )
 
 func TestMakeJWT(t *testing.T) {
@@ -63,6 +64,20 @@ func TestWrongSecretJWT(t *testing.T) {
 
 	if parsedID == id {
 		t.Errorf("IDs are the same: expected err")
+	}
+}
+
+func TestGetBearerToken(t *testing.T) {
+	header := make(http.Header)
+	header.Set("Authorization", "Bearer testJwtToken")
+
+	token, err := GetBearerToken(header)
+	if err != nil {
+		t.Fatalf("Bearer Token error: %v", err)
+	}
+
+	if token != "testJwtToken" {
+		t.Fatalf("Token extraction error: got %v, expected testJwtToken", token)
 	}
 }
 

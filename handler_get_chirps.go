@@ -6,9 +6,8 @@ import (
 	"github.com/google/uuid"
 )
 
-
-
 func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
+
 	allChirps, err := cfg.db.GetChirps(r.Context())
 	if err != nil {
 		log.Println("error retrieving chirps:", err)
