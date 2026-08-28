@@ -19,8 +19,6 @@ func (cfg *apiConfig) handlerRefresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("bearertoken:", bearer_token)
-
 	user_id, err := cfg.db.GetUserFromRefreshToken(r.Context(), bearer_token)
 	if err != nil {
 		log.Println("error looking up user from bearer token:", err)

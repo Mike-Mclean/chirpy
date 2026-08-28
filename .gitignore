@@ -1,3 +1,5 @@
 .env
 main
 chirpy
+go.mod
+go.sum
