@@ -16,10 +16,10 @@ func (cfg *apiConfig) handlerUpdateUser(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	userID, err = cfg.db.GetUserFromRefreshToken(r.Context(), bearer_token)
+	userID, err := auth.ValidateJWT(bearer_token, cfg.secret)
 	if err != nil {
-		log.Println("error looking up user from bearer token:", err)
-		respondWithError(w, http.StatusUnauthorized, "Failed to find user")
+		log.Println("error validating JWT:", err)
+		respondWithError(w, http.StatusUnauthorized, "Failed to authenticate")
 		return
 	}
 
@@ -37,11 +37,25 @@ func (cfg *apiConfig) handlerUpdateUser(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	updatedUserParams := database.CreateUserParams {
+	updatedInfo := database.UpdateUserInfoParams{
+		ID: userID,
 		Email: params.Email,
 		HashedPassword: hashedPassword,
 	}
 
-	
+	user, err := cfg.db.UpdateUserInfo(r.Context(), updatedInfo)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Could not update user information")
+		return
+	}
+
+	respBody := User {
+		ID:			user.ID,
+		CreatedAt: 	user.CreatedAt,
+		UpdatedAt: 	user.UpdatedAt,
+		Email:		user.Email,
+	}
+
+	respondWithJSON(w, http.StatusOK, respBody)
 
 }
